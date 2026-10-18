@@ -1,7 +1,6 @@
 # 5Dollar Guy — Website Portfolio
 
-**Live website:** https://5dollar-guy.higgsfield.app
-
+**Live website:** h
 This repository is the portfolio landing page for the 5Dollar Guy website project.
 
 ## Get the complete website files
@@ -22,4 +21,4 @@ The archive includes the application source, styles, public assets, animation vi
 - Example work is illustrative, not represented as client work or testimonials.
 
 ## Live demo
-https://5dollar-guy.higgsfield.app
+
