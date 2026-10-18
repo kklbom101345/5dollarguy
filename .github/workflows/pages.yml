@@ -19,76 +19,75 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Prepare original animated site for GitHub Pages
+      - name: Prepare original production site
+        shell: bash
         run: |
+          set -euo pipefail
           python3 - <<'PY'
-          import re, urllib.request, shutil
+          import re, subprocess
           from pathlib import Path
           origin = "https://5dollar-guy.higgsfield.app"
           base = "/5dollarguy"
           out = Path("site")
           out.mkdir(exist_ok=True)
-          if Path("assets").exists():
-              shutil.copytree("assets", out / "assets", dirs_exist_ok=True)
-          def get(url):
-              req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-              with urllib.request.urlopen(req, timeout=60) as response:
-                  return response.read()
-          def fetch_asset(path, force=False):
-              path = path.split("?", 1)[0]
-              if not path.startswith("/assets/"):
-                  return
-              target = out / path.lstrip("/")
-              if not force and target.exists() and target.stat().st_size > 100:
-                  return
+          def fetch(url, target):
               target.parent.mkdir(parents=True, exist_ok=True)
-              target.write_bytes(get(origin + path))
-          html = Path("index.html").read_text(encoding="utf-8")
-          pattern = re.compile(r"/assets/[A-Za-z0-9_./-]+")
-          for _ in range(15):
-              before = sum(1 for p in out.rglob("*") if p.is_file())
-              refs = set(pattern.findall(html))
-              for p in out.rglob("*"):
+              subprocess.run(["curl", "-fLsS", "--retry", "3", "-A", "Mozilla/5.0", url, "-o", str(target)], check=True)
+          # Use the actual published production HTML, not the broken dev-mode HTML committed to the repo.
+          fetch(origin + "/", out / "index.html")
+          html = (out / "index.html").read_text(encoding="utf-8")
+          asset_pattern = re.compile(r"""(?:(?:src|href)=["'])(/assets/[A-Za-z0-9_./?=&%-]+)""")
+          # Fetch entry scripts, styles, media and any assets referenced by the HTML or JS/CSS.
+          seen = set()
+          for _ in range(12):
+              refs = set(asset_pattern.findall(html))
+              for p in list(out.rglob("*")):
                   if p.is_file() and p.suffix.lower() in {".js", ".css", ".svg", ".webmanifest"}:
-                      try: refs.update(pattern.findall(p.read_text(errors="ignore")))
-                      except Exception: pass
-              for ref in sorted(refs): fetch_asset(ref)
-              after = sum(1 for p in out.rglob("*") if p.is_file())
-              if after == before: break
-          for asset in ["/assets/world/scene-01.mp4", "/assets/world/scene-01-mobile.mp4",
-                        "/assets/world/scene-01-desktop-poster.png", "/assets/world/scene-01-mobile-poster.png"]:
-              fetch_asset(asset, force=asset.endswith(".mp4"))
-          # Use the checked-in server-rendered page as the stable source, then
-          # remove development boot code and normalize production asset links.
-          html = re.sub(r'<script[^>]+src="/@id/virtual:tanstack-start-dev-client-entry"[^>]*></script>', "", html)
-          html = re.sub(r'<link[^>]+href="/@id/virtual:tanstack-start-dev-client-entry"[^>]*>', "", html)
-          html = re.sub(r'<link[^>]+href="/@tanstack-start/styles.css[^"]*"[^>]*>', "", html)
-          html = re.sub(r'<script[^>]+id="\\$tsr-stream-barrier"[^>]*>.*?</script>', "", html, flags=re.S)
-          html = html.replace('/assets/', base + '/assets/')
-          html = html.replace('href="/site.webmanifest"', 'href="' + base + '/site.webmanifest"')
-          # Remove all previous production bundle tags, including malformed or duplicate ones.
-          html = re.sub(r'<link[^>]+(?:styles-B4Eet8Za|routes-CNXtvISG)\.css[^>]*>', "", html)
-          html = re.sub(r'<script[^>]+index-DCwGVO_i\.js[^>]*></script>', "", html)
-          inject = ('<link rel="stylesheet" href="' + base + '/assets/styles-B4Eet8Za.css">'
-                    '<link rel="stylesheet" href="' + base + '/assets/routes-CNXtvISG.css">'
-                    '<style> a[href*="higgsfield"], [id*="higgsfield" i], [class*="higgsfield" i], iframe[src*="higgsfield"] { display:none!important; } </style>'
-                    '<script type="module" src="' + base + '/assets/index-DCwGVO_i.js"></script>')
-          html = html.replace("</head>", inject + "</head>")
+                      try:
+                          txt = p.read_text(encoding="utf-8", errors="ignore")
+                          refs.update(re.findall(r"""(?<![A-Za-z0-9_-])(/assets/[A-Za-z0-9_./?=&%-]+)""", txt))
+                      except Exception:
+                          pass
+              refs = {x.split("?", 1)[0] for x in refs if x.startswith("/assets/")}
+              pending = sorted(refs - seen)
+              if not pending:
+                  break
+              for ref in pending:
+                  seen.add(ref)
+                  target = out / ref.lstrip("/")
+                  if target.exists() and target.stat().st_size > 100:
+                      continue
+                  fetch(origin + ref, target)
+          # Ensure animation media and poster frames are present even if referenced dynamically.
+          for asset in [
+              "/assets/world/scene-01.mp4",
+              "/assets/world/scene-01-mobile.mp4",
+              "/assets/world/scene-01-desktop-poster.png",
+              "/assets/world/scene-01-mobile-poster.png",
+          ]:
+              target = out / asset.lstrip("/")
+              if not target.exists() or target.stat().st_size < 1000:
+                  fetch(origin + asset, target)
+          # Rebase every root-relative asset path for the GitHub Pages project URL.
           for p in out.rglob("*"):
-              if p.is_file() and p.suffix.lower() in {".js", ".css", ".svg", ".webmanifest"}:
-                  try:
-                      data = p.read_text()
-                      data = data.replace('/assets/', base + '/assets/')
-                      data = data.replace("https://5dollar-guy.higgsfield.app", "")
-                      p.write_text(data)
-                  except UnicodeDecodeError: pass
-          # Write the prepared HTML before validating the published files.
-          (out / "index.html").write_text(html)
-          # Make sure static assets required for the opening scroll-scrub scene exist.
-          assert (out / "index.html").stat().st_size > 1000
-          assert (out / "assets/world/scene-01.mp4").stat().st_size > 100000
-          assert (out / "assets/world/scene-01-mobile.mp4").stat().st_size > 100000
-          print("Prepared", sum(1 for p in out.rglob("*") if p.is_file()), "files")
+              if p.is_file() and p.suffix.lower() in {".html", ".js", ".css", ".svg", ".webmanifest"}:
+                  txt = p.read_text(encoding="utf-8", errors="ignore")
+                  txt = txt.replace("/assets/", base + "/assets/")
+                  txt = txt.replace('href="/site.webmanifest"', 'href="' + base + '/site.webmanifest"')
+                  # Remove only the Higgsfield platform badge link, not application UI.
+                  txt = re.sub(r'<a\\b[^>]*href=["']https://higgsfield\\.ai/supercomputer/apps["'][^>]*>.*?</a>', "", txt, flags=re.I | re.S)
+                  p.write_text(txt, encoding="utf-8")
+          # Remove a development-only TanStack stream bootstrap if the origin ever includes it.
+          index = out / "index.html"
+          txt = index.read_text(encoding="utf-8")
+          txt = re.sub(r'<script[^>]*id=["']\\$tsr-stream-barrier["'][^>]*>.*?</script>', "", txt, flags=re.I | re.S)
+          index.write_text(txt, encoding="utf-8")
+          assert index.stat().st_size > 10000, "Production HTML did not download correctly"
+          assert (out / "assets").exists(), "No production assets were downloaded"
+          assert any(out.rglob("*.js")), "No JavaScript bundle was downloaded"
+          assert (out / "assets/world/scene-01.mp4").stat().st_size > 100000, "Desktop hero animation is missing"
+          print("Prepared production site:", sum(1 for x in out.rglob("*") if x.is_file()), "files")
+          print("HTML bytes:", index.stat().st_size)
           PY
       - name: Configure Pages
         uses: actions/configure-pages@v5
