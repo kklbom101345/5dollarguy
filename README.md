@@ -2,7 +2,13 @@
 
 **Live website:** https://5dollar-guy.higgsfield.app
 
-This repository contains the portfolio package for the 5Dollar Guy website. The complete source-and-assets archive will be added as `5Dollar-Guy-Portfolio-Website.zip`.
+This repository is the portfolio landing page for the 5Dollar Guy website project.
+
+## Get the complete website files
+
+[**Download the complete source-and-assets ZIP**](https://d2ol7oe51mr4n9.cloudfront.net/user_3H567MB3K60Lb0TaskXd7BrCY8P/5233a219-b0cc-4510-a5ca-162b953d340b.zip)
+
+The archive includes the application source, styles, public assets, animation video/posters, and project files.
 
 ## Project
 - Small digital tasks for entrepreneurs
@@ -10,10 +16,10 @@ This repository contains the portfolio package for the 5Dollar Guy website. The 
 - Black, white, and yellow visual identity with a scroll-controlled hero animation
 - Responsive landing page, sample outputs, FAQs, and an interactive request builder
 
-## Notes
+## Implementation notes
 - The request form prepares a message in the browser; it does not submit to a backend.
 - No payment checkout is integrated.
-- Example work is illustrative and is not represented as client work or testimonials.
+- Example work is illustrative, not represented as client work or testimonials.
 
 ## Live demo
 https://5dollar-guy.higgsfield.app
