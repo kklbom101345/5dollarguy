@@ -75,6 +75,8 @@ jobs:
               if p.is_file() and p.suffix.lower() in {".html", ".js", ".css", ".svg", ".webmanifest"}:
                   txt = p.read_text(encoding="utf-8", errors="ignore")
                   txt = txt.replace("/assets/", base + "/assets/")
+                  if p.suffix.lower() == ".js":
+                      txt = txt.replace("routeTree:Nd,context:{queryClient:new tu},scrollRestoration:!0,defaultPreloadStaleTime:0", 'routeTree:Nd,basepath:"/5dollarguy",context:{queryClient:new tu},scrollRestoration:!0,defaultPreloadStaleTime:0')
                   txt = re.sub(r"""(?<![A-Za-z0-9_./-])assets/([A-Za-z0-9_.-]+\\.(?:js|css))""", base + r"/assets/\\1", txt)
                   txt = txt.replace('href="/site.webmanifest"', 'href="' + base + '/site.webmanifest"')
                   if p.suffix.lower() == ".html":
