@@ -34,12 +34,12 @@ jobs:
               req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
               with urllib.request.urlopen(req, timeout=60) as response:
                   return response.read()
-          def fetch_asset(path):
+          def fetch_asset(path, force=False):
               path = path.split("?", 1)[0]
               if not path.startswith("/assets/"):
                   return
               target = out / path.lstrip("/")
-              if target.exists() and target.stat().st_size > 100:
+              if not force and target.exists() and target.stat().st_size > 100:
                   return
               target.parent.mkdir(parents=True, exist_ok=True)
               target.write_bytes(get(origin + path))
@@ -57,7 +57,7 @@ jobs:
               if after == before: break
           for asset in ["/assets/world/scene-01.mp4", "/assets/world/scene-01-mobile.mp4",
                         "/assets/world/scene-01-desktop-poster.png", "/assets/world/scene-01-mobile-poster.png"]:
-              fetch_asset(asset)
+              fetch_asset(asset, force=asset.endswith(".mp4"))
           # Strip development-only boot scripts and their preload/manifest references.
           html = re.sub(r"<script[^>]+src=[\"']/@id/virtual:tanstack-start-dev-client-entry[\"'][^>]*></script>", "", html)
           html = re.sub(r"<link[^>]+(?:data-tanstack-router-dev-styles|rel=[\"']modulepreload[\"'][^>]*virtual:tanstack-start-dev-client-entry)[^>]*>", "", html)
