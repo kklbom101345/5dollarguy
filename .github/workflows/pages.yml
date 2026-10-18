@@ -75,8 +75,47 @@ jobs:
               if p.is_file() and p.suffix.lower() in {".html", ".js", ".css", ".svg", ".webmanifest"}:
                   txt = p.read_text(encoding="utf-8", errors="ignore")
                   txt = txt.replace("/assets/", base + "/assets/")
+                  if p.suffix.lower() == ".html":
+                      # TanStack Start's root-mounted hydration is incompatible with GitHub Pages' project subpath.
+                      # Keep the server-rendered HTML and run the scroll-scrub video directly, avoiding the hydration crash/flash.
+                      script = """<script>
+                      (() => {
+                        const layer = document.querySelector('[data-scroll-scrub-layer]');
+                        const chapter = document.querySelector('[data-scroll-scrub-band]');
+                        const stage = document.querySelector('.scroll-scrub__stage');
+                        if (!layer || !chapter || !stage) return;
+                        const video = document.createElement('video');
+                        video.className = 'scroll-scrub__video';
+                        video.src = '/5dollarguy/assets/world/scene-01.mp4';
+                        video.muted = true; video.playsInline = true; video.preload = 'auto';
+                        video.setAttribute('aria-hidden', 'true');
+                        layer.appendChild(video);
+                        let duration = 0, frame = 0;
+                        video.addEventListener('loadedmetadata', () => { duration = video.duration || 0; update(); });
+                        video.addEventListener('seeked', () => { if (video.readyState >= 2) layer.setAttribute('data-video-painted', 'true'); });
+                        const update = () => {
+                          const rect = chapter.getBoundingClientRect();
+                          const range = Math.max(1, chapter.offsetHeight - window.innerHeight);
+                          const progress = Math.min(1, Math.max(0, -rect.top / range));
+                          if (duration > 0 && video.readyState >= 1) {
+                            const target = progress * Math.max(0, duration - 0.04);
+                            if (Math.abs(video.currentTime - target) > 0.06) {
+                              try { video.currentTime = target; } catch (_) {}
+                            }
+                          }
+                          const bar = document.querySelector('.scroll-scrub__progress span');
+                          if (bar) bar.style.transform = 'scaleX(' + progress + ')';
+                        };
+                        const onScroll = () => { if (!frame) frame = requestAnimationFrame(() => { frame = 0; update(); }); };
+                        window.addEventListener('scroll', onScroll, { passive: true });
+                        window.addEventListener('resize', onScroll);
+                        video.addEventListener('error', () => { video.remove(); });
+                        update();
+                      })();
+                      </script>"""
+                      txt = re.sub(r'<script type="module" async="" src="/5dollarguy/assets/index-[^"]+\\.js"></script>', script, txt)
                   if p.suffix.lower() == ".js":
-                      txt = txt.replace("routeTree:Nd,context:{queryClient:new tu},scrollRestoration:!0,defaultPreloadStaleTime:0", 'routeTree:Nd,basepath:"/5dollarguy",context:{queryClient:new tu},scrollRestoration:!0,defaultPreloadStaleTime:0')
+                      txt = txt.replace("routeTree:Nd,basepath:"/5dollarguy",context:{queryClient:new tu},scrollRestoration:!0,defaultPreloadStaleTime:0", 'routeTree:Nd,basepath:"/5dollarguy",context:{queryClient:new tu},scrollRestoration:!0,defaultPreloadStaleTime:0')
                   txt = re.sub(r"""(?<![A-Za-z0-9_./-])assets/([A-Za-z0-9_.-]+\\.(?:js|css))""", base + r"/assets/\\1", txt)
                   txt = txt.replace('href="/site.webmanifest"', 'href="' + base + '/site.webmanifest"')
                   if p.suffix.lower() == ".html":
