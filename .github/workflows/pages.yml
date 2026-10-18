@@ -60,15 +60,15 @@ jobs:
               fetch_asset(asset, force=asset.endswith(".mp4"))
           # Use the checked-in server-rendered page as the stable source, then
           # remove development boot code and normalize production asset links.
-          html = re.sub(r'<script[^>]+src=["\\']/@id/virtual:tanstack-start-dev-client-entry["\\'][^>]*></script>', "", html)
-          html = re.sub(r'<link[^>]+href=["\\']/@id/virtual:tanstack-start-dev-client-entry["\\'][^>]*>', "", html)
-          html = re.sub(r'<link[^>]+href=["\\']/@tanstack-start/styles.css[^>]*>', "", html)
-          html = re.sub(r'<script[^>]+id=["\\']\\$tsr-stream-barrier["\\'][^>]*>.*?</script>', "", html, flags=re.S)
+          html = re.sub(r'<script[^>]+src="/@id/virtual:tanstack-start-dev-client-entry"[^>]*></script>', "", html)
+          html = re.sub(r'<link[^>]+href="/@id/virtual:tanstack-start-dev-client-entry"[^>]*>', "", html)
+          html = re.sub(r'<link[^>]+href="/@tanstack-start/styles.css[^"]*"[^>]*>', "", html)
+          html = re.sub(r'<script[^>]+id="\\$tsr-stream-barrier"[^>]*>.*?</script>', "", html, flags=re.S)
           html = html.replace('/assets/', base + '/assets/')
           html = html.replace('href="/site.webmanifest"', 'href="' + base + '/site.webmanifest"')
           # Remove all previous production bundle tags, including malformed or duplicate ones.
-          html = re.sub(r'<link[^>]+(?:styles-B4Eet8Za|routes-CNXtvISG)\\.css[^>]*>', "", html)
-          html = re.sub(r'<script[^>]+index-DCwGVO_i\\.js[^>]*></script>', "", html)
+          html = re.sub(r'<link[^>]+(?:styles-B4Eet8Za|routes-CNXtvISG)\.css[^>]*>', "", html)
+          html = re.sub(r'<script[^>]+index-DCwGVO_i\.js[^>]*></script>', "", html)
           inject = ('<link rel="stylesheet" href="' + base + '/assets/styles-B4Eet8Za.css">'
                     '<link rel="stylesheet" href="' + base + '/assets/routes-CNXtvISG.css">'
                     '<style> a[href*="higgsfield"], [id*="higgsfield" i], [class*="higgsfield" i], iframe[src*="higgsfield"] { display:none!important; } </style>'
