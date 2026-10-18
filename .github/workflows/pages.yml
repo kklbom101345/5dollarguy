@@ -19,12 +19,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Download original animated static build
+        run: |
+          mkdir -p site
+          curl -fL "https://d2ol7oe51mr4n9.cloudfront.net/user_3H567MB3K60Lb0TaskXd7BrCY8P/8e72d596-14f7-4a77-a791-46f8b41cb7b1.zip" -o /tmp/site.zip
+          unzip -q /tmp/site.zip -d site
+          test -s site/index.html
+          test -s site/assets/world/scene-01.mp4
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static website
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: ./site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
