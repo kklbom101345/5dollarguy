@@ -65,10 +65,10 @@ jobs:
           html = html.replace('"/@id/virtual:tanstack-start-dev-client-entry"', '""')
           html = html.replace('"/@tanstack-start/styles.css?routes=__root__%2C%2F"', '""')
           # Rewrite all root asset URLs, including srcSet and CSS/JS string literals.
-          html = re.sub(r'(?<![A-Za-z0-9])(/assets/)', base + r'\\1', html)
+          html = html.replace('/assets/', base + '/assets/')
           html = html.replace('href="/site.webmanifest"', 'href="' + base + '/site.webmanifest"')
-          html = re.sub(r'<link[^>]+href=["\\']' + re.escape(base) + r'/assets/(?:styles-B4Eet8Za|routes-CNXtvISG)\\.css["\\'][^>]*>', "", html)
-          html = re.sub(r'<script[^>]+src=["\\']' + re.escape(base) + r'/assets/index-[^"\\']+\\.js["\\'][^>]*></script>', "", html)
+          html = re.sub(r'<link[^>]+href="[^"]*(?:styles-B4Eet8Za|routes-CNXtvISG)\\.css"[^>]*>', "", html)
+          html = re.sub(r'<script[^>]+src="[^"]*index-[^"]+\\.js"[^>]*></script>', "", html)
           inject = ('<link rel="stylesheet" href="' + base + '/assets/styles-B4Eet8Za.css">'
                     '<link rel="stylesheet" href="' + base + '/assets/routes-CNXtvISG.css">'
                     '<style> a[href*="higgsfield"], [id*="higgsfield" i], [class*="higgsfield" i], iframe[src*="higgsfield"] { display:none!important; } </style>'
@@ -78,7 +78,7 @@ jobs:
               if p.is_file() and p.suffix.lower() in {".js", ".css", ".svg", ".webmanifest"}:
                   try:
                       data = p.read_text()
-                      data = re.sub(r'(?<![A-Za-z0-9])(/assets/)', base + r'\\1', data)
+                      data = data.replace('/assets/', base + '/assets/')
                       data = data.replace("https://5dollar-guy.higgsfield.app", "")
                       p.write_text(data)
                   except UnicodeDecodeError: pass
