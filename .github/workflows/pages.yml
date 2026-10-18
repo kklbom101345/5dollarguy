@@ -43,7 +43,7 @@ jobs:
                   return
               target.parent.mkdir(parents=True, exist_ok=True)
               target.write_bytes(get(origin + path))
-          html = get(origin + "/").decode("utf-8", errors="replace")
+          html = Path("index.html").read_text(encoding="utf-8")
           pattern = re.compile(r"/assets/[A-Za-z0-9_./-]+")
           for _ in range(15):
               before = sum(1 for p in out.rglob("*") if p.is_file())
@@ -58,17 +58,17 @@ jobs:
           for asset in ["/assets/world/scene-01.mp4", "/assets/world/scene-01-mobile.mp4",
                         "/assets/world/scene-01-desktop-poster.png", "/assets/world/scene-01-mobile-poster.png"]:
               fetch_asset(asset, force=asset.endswith(".mp4"))
-          # Strip development-only boot scripts and their preload/manifest references.
-          html = re.sub(r"<script[^>]+src=[\"']/@id/virtual:tanstack-start-dev-client-entry[\"'][^>]*></script>", "", html)
-          html = re.sub(r"<link[^>]+(?:data-tanstack-router-dev-styles|rel=[\"']modulepreload[\"'][^>]*virtual:tanstack-start-dev-client-entry)[^>]*>", "", html)
-          html = re.sub(r"<script[^>]+id=[\"']\\$tsr-stream-barrier[\"'][^>]*>.*?</script>", "", html, flags=re.S)
-          html = html.replace('"/@id/virtual:tanstack-start-dev-client-entry"', '""')
-          html = html.replace('"/@tanstack-start/styles.css?routes=__root__%2C%2F"', '""')
-          # Rewrite all root asset URLs, including srcSet and CSS/JS string literals.
+          # Use the checked-in server-rendered page as the stable source, then
+          # remove development boot code and normalize production asset links.
+          html = re.sub(r'<script[^>]+src=["\\']/@id/virtual:tanstack-start-dev-client-entry["\\'][^>]*></script>', "", html)
+          html = re.sub(r'<link[^>]+href=["\\']/@id/virtual:tanstack-start-dev-client-entry["\\'][^>]*>', "", html)
+          html = re.sub(r'<link[^>]+href=["\\']/@tanstack-start/styles.css[^>]*>', "", html)
+          html = re.sub(r'<script[^>]+id=["\\']\\$tsr-stream-barrier["\\'][^>]*>.*?</script>', "", html, flags=re.S)
           html = html.replace('/assets/', base + '/assets/')
           html = html.replace('href="/site.webmanifest"', 'href="' + base + '/site.webmanifest"')
-          html = re.sub(r'<link[^>]+href="[^"]*(?:styles-B4Eet8Za|routes-CNXtvISG)\\.css"[^>]*>', "", html)
-          html = re.sub(r'<script[^>]+src="[^"]*index-[^"]+\\.js"[^>]*></script>', "", html)
+          # Remove all previous production bundle tags, including malformed or duplicate ones.
+          html = re.sub(r'<link[^>]+(?:styles-B4Eet8Za|routes-CNXtvISG)\\.css[^>]*>', "", html)
+          html = re.sub(r'<script[^>]+index-DCwGVO_i\\.js[^>]*></script>', "", html)
           inject = ('<link rel="stylesheet" href="' + base + '/assets/styles-B4Eet8Za.css">'
                     '<link rel="stylesheet" href="' + base + '/assets/routes-CNXtvISG.css">'
                     '<style> a[href*="higgsfield"], [id*="higgsfield" i], [class*="higgsfield" i], iframe[src*="higgsfield"] { display:none!important; } </style>'
