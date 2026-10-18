@@ -19,16 +19,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Mirror and prepare the original animated site
+      - name: Prepare original animated site for GitHub Pages
         run: |
           python3 - <<'PY'
-          import re, urllib.request
+          import re, urllib.request, shutil
           from pathlib import Path
           origin = "https://5dollar-guy.higgsfield.app"
+          base = "/5dollarguy"
           out = Path("site")
           out.mkdir(exist_ok=True)
           if Path("assets").exists():
-              import shutil
               shutil.copytree("assets", out / "assets", dirs_exist_ok=True)
           def get(url):
               req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -50,57 +50,42 @@ jobs:
               refs = set(pattern.findall(html))
               for p in out.rglob("*"):
                   if p.is_file() and p.suffix.lower() in {".js", ".css", ".svg", ".webmanifest"}:
-                      try:
-                          refs.update(pattern.findall(p.read_text(errors="ignore")))
-                      except Exception:
-                          pass
-              for ref in sorted(refs):
-                  fetch_asset(ref)
+                      try: refs.update(pattern.findall(p.read_text(errors="ignore")))
+                      except Exception: pass
+              for ref in sorted(refs): fetch_asset(ref)
               after = sum(1 for p in out.rglob("*") if p.is_file())
-              if after == before:
-                  break
-          # Copy the original scene videos and poster images explicitly.
-          for asset in [
-              "/assets/world/scene-01.mp4",
-              "/assets/world/scene-01-mobile.mp4",
-              "/assets/world/scene-01-desktop-poster.png",
-              "/assets/world/scene-01-mobile-poster.png",
-          ]:
+              if after == before: break
+          for asset in ["/assets/world/scene-01.mp4", "/assets/world/scene-01-mobile.mp4",
+                        "/assets/world/scene-01-desktop-poster.png", "/assets/world/scene-01-mobile-poster.png"]:
               fetch_asset(asset)
-          # The source host exposes a development-mode TanStack entry; remove it and load the
-          # production Vite client bundle plus its compiled CSS instead.
-          html = re.sub(r'<script[^>]+src=["\']/@id/virtual:tanstack-start-dev-client-entry["\'][^>]*></script>', "", html)
-          html = re.sub(r'<link[^>]+data-tanstack-router-dev-styles[^>]*>', "", html)
-          html = re.sub(r'<script[^>]+src=["\']/@vite/client["\'][^>]*></script>', "", html)
-          base = "/5dollarguy"
-          html = html.replace('src="/assets/', 'src="' + base + '/assets/')
-          html = html.replace('href="/assets/', 'href="' + base + '/assets/')
-          html = html.replace('poster="/assets/', 'poster="' + base + '/assets/')
-          html = html.replace('"/assets/', '"' + base + '/assets/')
-          html = html.replace("'/assets/", "'" + base + "/assets/")
-          # Root-relative paths in compiled bundles/CSS must also point into the Pages subpath.
+          # Strip development-only boot scripts and their preload/manifest references.
+          html = re.sub(r'<script[^>]+src=["\\']/@id/virtual:tanstack-start-dev-client-entry["\\'][^>]*></script>', "", html)
+          html = re.sub(r'<link[^>]+(?:data-tanstack-router-dev-styles|rel=["\\']modulepreload["\\'][^>]*virtual:tanstack-start-dev-client-entry)[^>]*>', "", html)
+          html = re.sub(r'<script[^>]+id=["\\']\\$tsr-stream-barrier["\\'][^>]*>.*?</script>', "", html, flags=re.S)
+          html = html.replace('"/@id/virtual:tanstack-start-dev-client-entry"', '""')
+          html = html.replace('"/@tanstack-start/styles.css?routes=__root__%2C%2F"', '""')
+          # Rewrite all root asset URLs, including srcSet and CSS/JS string literals.
+          html = re.sub(r'(?<![A-Za-z0-9])(/assets/)', base + r'\\1', html)
+          html = html.replace('href="/site.webmanifest"', 'href="' + base + '/site.webmanifest"')
+          html = re.sub(r'<link[^>]+href=["\\']' + re.escape(base) + r'/assets/(?:styles-B4Eet8Za|routes-CNXtvISG)\\.css["\\'][^>]*>', "", html)
+          html = re.sub(r'<script[^>]+src=["\\']' + re.escape(base) + r'/assets/index-[^"\\']+\\.js["\\'][^>]*></script>', "", html)
+          inject = ('<link rel="stylesheet" href="' + base + '/assets/styles-B4Eet8Za.css">'
+                    '<link rel="stylesheet" href="' + base + '/assets/routes-CNXtvISG.css">'
+                    '<style> a[href*="higgsfield"], [id*="higgsfield" i], [class*="higgsfield" i], iframe[src*="higgsfield"] { display:none!important; } </style>'
+                    '<script type="module" src="' + base + '/assets/index-DCwGVO_i.js"></script>')
+          html = html.replace("</head>", inject + "</head>")
           for p in out.rglob("*"):
               if p.is_file() and p.suffix.lower() in {".js", ".css", ".svg", ".webmanifest"}:
                   try:
                       data = p.read_text()
-                      data = data.replace('"/assets/', '"' + base + '/assets/')
-                      data = data.replace("'/assets/", "'" + base + "/assets/")
+                      data = re.sub(r'(?<![A-Za-z0-9])(/assets/)', base + r'\\1', data)
+                      data = data.replace("https://5dollar-guy.higgsfield.app", "")
                       p.write_text(data)
-                  except UnicodeDecodeError:
-                      pass
-          # Use the known production entry/CSS; avoid duplicate script tags.
-          html = re.sub(r'<script[^>]+src=["\']' + re.escape(base) + r'/assets/index-[^"\']+\.js["\'][^>]*></script>', "", html)
-          inject = (
-              '<link rel="stylesheet" href="' + base + '/assets/styles-B4Eet8Za.css">'
-              '<link rel="stylesheet" href="' + base + '/assets/routes-CNXtvISG.css">'
-              '<script type="module" src="' + base + '/assets/index-DCwGVO_i.js"></script>'
-          )
-          html = html.replace("</head>", inject + "</head>")
-          (out / "index.html").write_text(html)
+                  except UnicodeDecodeError: pass
+          # Make sure static assets required for the opening scroll-scrub scene exist.
           assert (out / "index.html").stat().st_size > 1000
           assert (out / "assets/world/scene-01.mp4").stat().st_size > 100000
           assert (out / "assets/world/scene-01-mobile.mp4").stat().st_size > 100000
-          assert "/@id/virtual:tanstack-start-dev-client-entry" not in html
           print("Prepared", sum(1 for p in out.rglob("*") if p.is_file()), "files")
           PY
       - name: Configure Pages
