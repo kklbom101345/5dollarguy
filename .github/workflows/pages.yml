@@ -59,9 +59,9 @@ jobs:
                         "/assets/world/scene-01-desktop-poster.png", "/assets/world/scene-01-mobile-poster.png"]:
               fetch_asset(asset)
           # Strip development-only boot scripts and their preload/manifest references.
-          html = re.sub(r'<script[^>]+src=["\\']/@id/virtual:tanstack-start-dev-client-entry["\\'][^>]*></script>', "", html)
-          html = re.sub(r'<link[^>]+(?:data-tanstack-router-dev-styles|rel=["\\']modulepreload["\\'][^>]*virtual:tanstack-start-dev-client-entry)[^>]*>', "", html)
-          html = re.sub(r'<script[^>]+id=["\\']\\$tsr-stream-barrier["\\'][^>]*>.*?</script>', "", html, flags=re.S)
+          html = re.sub(r"<script[^>]+src=[\"']/@id/virtual:tanstack-start-dev-client-entry[\"'][^>]*></script>", "", html)
+          html = re.sub(r"<link[^>]+(?:data-tanstack-router-dev-styles|rel=[\"']modulepreload[\"'][^>]*virtual:tanstack-start-dev-client-entry)[^>]*>", "", html)
+          html = re.sub(r"<script[^>]+id=[\"']\\$tsr-stream-barrier[\"'][^>]*>.*?</script>", "", html, flags=re.S)
           html = html.replace('"/@id/virtual:tanstack-start-dev-client-entry"', '""')
           html = html.replace('"/@tanstack-start/styles.css?routes=__root__%2C%2F"', '""')
           # Rewrite all root asset URLs, including srcSet and CSS/JS string literals.
