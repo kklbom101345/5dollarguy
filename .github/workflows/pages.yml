@@ -114,8 +114,6 @@ jobs:
                       })();
                       </script>"""
                       txt = re.sub(r'<script type="module" async="" src="/5dollarguy/assets/index-[^"]+\\.js"></script>', script, txt)
-                  if p.suffix.lower() == ".js":
-                      txt = txt.replace("routeTree:Nd,basepath:"/5dollarguy",context:{queryClient:new tu},scrollRestoration:!0,defaultPreloadStaleTime:0", 'routeTree:Nd,basepath:"/5dollarguy",context:{queryClient:new tu},scrollRestoration:!0,defaultPreloadStaleTime:0')
                   txt = re.sub(r"""(?<![A-Za-z0-9_./-])assets/([A-Za-z0-9_.-]+\\.(?:js|css))""", base + r"/assets/\\1", txt)
                   txt = txt.replace('href="/site.webmanifest"', 'href="' + base + '/site.webmanifest"')
                   if p.suffix.lower() == ".html":
