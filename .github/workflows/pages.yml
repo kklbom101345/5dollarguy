@@ -75,7 +75,7 @@ jobs:
                   txt = txt.replace("/assets/", base + "/assets/")
                   txt = txt.replace('href="/site.webmanifest"', 'href="' + base + '/site.webmanifest"')
                   # Remove only the Higgsfield platform badge link, not application UI.
-                  txt = re.sub(r\"<a\\\\b[^>]*href=['\\\"]https://higgsfield\\\\.ai/supercomputer/apps['\\\"][^>]*>.*?</a>\", "", txt, flags=re.I | re.S)
+                  txt = re.sub(r'<script[^>]*id="\\$tsr-stream-barrier"[^>]*>.*?</script>', "", txt, flags=re.I | re.S)
                   p.write_text(txt, encoding="utf-8")
           # Remove a development-only TanStack stream bootstrap if the origin ever includes it.
           index = out / "index.html"
