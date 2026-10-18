@@ -46,6 +46,7 @@ jobs:
                       try:
                           txt = p.read_text(encoding="utf-8", errors="ignore")
                           refs.update(re.findall(r"""(?<![A-Za-z0-9_-])(/assets/[A-Za-z0-9_./?=&%-]+)""", txt))
+                          refs.update("/" + x for x in re.findall(r"""(?<![A-Za-z0-9_./-])assets/[A-Za-z0-9_./-]+""", txt))
                       except Exception:
                           pass
               refs = {x.split("?", 1)[0] for x in refs if x.startswith("/assets/")}
@@ -73,6 +74,7 @@ jobs:
               if p.is_file() and p.suffix.lower() in {".html", ".js", ".css", ".svg", ".webmanifest"}:
                   txt = p.read_text(encoding="utf-8", errors="ignore")
                   txt = txt.replace("/assets/", base + "/assets/")
+                  txt = re.sub(r"""(?<![A-Za-z0-9_./-])assets/([A-Za-z0-9_.-]+\\.(?:js|css))""", base + r"/assets/\\1", txt)
                   txt = txt.replace('href="/site.webmanifest"', 'href="' + base + '/site.webmanifest"')
                   if p.suffix.lower() == ".html":
                       txt = txt.replace("</head>", '<style>a[href*="higgsfield.ai/supercomputer/apps"]{display:none!important}</style></head>')
