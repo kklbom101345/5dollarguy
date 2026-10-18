@@ -19,13 +19,64 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Download original animated static build
+      - name: Mirror the original site and its runtime assets
         run: |
-          mkdir -p site
-          curl -fL "https://d2ol7oe51mr4n9.cloudfront.net/user_3H567MB3K60Lb0TaskXd7BrCY8P/8e72d596-14f7-4a77-a791-46f8b41cb7b1.zip" -o /tmp/site.zip
-          unzip -q /tmp/site.zip -d site
-          test -s site/index.html
-          test -s site/assets/world/scene-01.mp4
+          python3 - <<'PY'
+          import re, urllib.request
+          from pathlib import Path
+          origin = "https://5dollar-guy.higgsfield.app"
+          out = Path("site")
+          out.mkdir(exist_ok=True)
+          def fetch(path):
+              path = path.split("?", 1)[0]
+              if not path.startswith("/assets/"):
+                  return None
+              target = out / path.lstrip("/")
+              if target.exists():
+                  return target
+              target.parent.mkdir(parents=True, exist_ok=True)
+              req = urllib.request.Request(origin + path, headers={"User-Agent": "Mozilla/5.0"})
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  target.write_bytes(response.read())
+              return target
+          req = urllib.request.Request(origin + "/", headers={"User-Agent": "Mozilla/5.0"})
+          with urllib.request.urlopen(req, timeout=30) as response:
+              (out / "index.html").write_bytes(response.read())
+          pattern = re.compile(r"/assets/[A-Za-z0-9_./-]+")
+          for _ in range(12):
+              found = set()
+              for p in out.rglob("*"):
+                  if p.is_file() and p.suffix.lower() in {".html", ".js", ".css", ".svg", ".webmanifest"}:
+                      try:
+                          found.update(pattern.findall(p.read_text(errors="ignore")))
+                      except Exception:
+                          pass
+              before = sum(1 for p in out.rglob("*") if p.is_file())
+              for asset in sorted(found):
+                  fetch(asset)
+              after = sum(1 for p in out.rglob("*") if p.is_file())
+              if after == before:
+                  break
+          # Ensure any assets referenced dynamically by the scroll-scrub scene exist locally.
+          for asset in [
+              "/assets/world/scene-01.mp4",
+              "/assets/world/scene-01-mobile.mp4",
+              "/assets/world/scene-01-desktop-poster.png",
+              "/assets/world/scene-01-mobile-poster.png",
+          ]:
+              fetch(asset)
+          # Rewrite root-relative asset paths to this repository's Pages subpath.
+          for p in out.rglob("*"):
+              if p.is_file() and p.suffix.lower() in {".html", ".js", ".css", ".svg", ".webmanifest"}:
+                  try:
+                      data = p.read_text()
+                      p.write_text(data.replace("/assets/", "/5dollarguy/assets/"))
+                  except UnicodeDecodeError:
+                      pass
+          assert (out / "index.html").stat().st_size > 1000
+          assert (out / "assets/world/scene-01.mp4").stat().st_size > 1000
+          print("Mirrored", sum(1 for p in out.rglob("*") if p.is_file()), "files")
+          PY
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload static website
