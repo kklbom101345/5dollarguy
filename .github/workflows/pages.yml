@@ -82,6 +82,8 @@ jobs:
                       data = data.replace("https://5dollar-guy.higgsfield.app", "")
                       p.write_text(data)
                   except UnicodeDecodeError: pass
+          # Write the prepared HTML before validating the published files.
+          (out / "index.html").write_text(html)
           # Make sure static assets required for the opening scroll-scrub scene exist.
           assert (out / "index.html").stat().st_size > 1000
           assert (out / "assets/world/scene-01.mp4").stat().st_size > 100000
